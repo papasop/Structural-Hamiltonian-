@@ -1,22 +1,37 @@
 # -*- coding: utf-8 -*-
-# 完整版：非厄米 PPM + Struct-+1 + 寿命/相图 (Colab适配)
+# ============================================
+# 非厄米 PPM + Struct-+1 + 寿命/相图 + PennyLane DV 测试（Colab 版）
+# ============================================
+
+# 如果还没装过 PennyLane，可以先取消下一行注释：
+# !pip install pennylane
+
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import time
 
-print("=== 非厄米 PPM 完整模拟系统 ===")
-print("NumPy版本:", np.__version__)
+import pennylane as qml
+from pennylane import numpy as qnp  # 用在量子电路里，避免和 numpy np 冲突
+
+print("=== 非厄米 PPM + PennyLane 量子测试 系统 ===")
+print("NumPy 版本:", np.__version__)
+print("PennyLane 版本:", qml.__version__)
 
 # -------------------------------
 # 0. 全局参数：网格 & 符号强度
 # -------------------------------
 N = 9  # 9x9 纸带/介质
 I_SYMBOL = np.array([0.0, 0.0311, 0.0863, 0.8838], dtype=np.float64)
-THRESHOLDS = np.array([0.0, 
-                      (I_SYMBOL[0] + I_SYMBOL[1])/2, 
-                      (I_SYMBOL[1] + I_SYMBOL[2])/2, 
-                      (I_SYMBOL[2] + I_SYMBOL[3])/2], dtype=np.float64)
+THRESHOLDS = np.array(
+    [
+        0.0,
+        (I_SYMBOL[0] + I_SYMBOL[1]) / 2,
+        (I_SYMBOL[1] + I_SYMBOL[2]) / 2,
+        (I_SYMBOL[2] + I_SYMBOL[3]) / 2,
+    ],
+    dtype=np.float64,
+)
 
 DATA_CELL = (1, 0)  # (row, col)
 
@@ -33,6 +48,7 @@ class NHConfig:
     - lap_coeff: 拉普拉斯系数
     - beta: 非线性软饱和耗散强度
     """
+
     def __init__(self, dt=1e-3, lap_coeff=1e-2, beta=1e-2):
         self.dt = dt
         self.lap_coeff = lap_coeff
@@ -53,10 +69,7 @@ def laplacian_periodic(field: np.ndarray) -> np.ndarray:
     )
 
 
-def nh_step(psi: np.ndarray,
-            gamma: float,
-            noise_scale: float,
-            cfg: NHConfig) -> np.ndarray:
+def nh_step(psi: np.ndarray, gamma: float, noise_scale: float, cfg: NHConfig) -> np.ndarray:
     """
     单步非厄米演化（稳定版）：
       dψ/dt = i * lap_coeff * ∇²ψ - γ ψ - β |ψ|² ψ + 噪声
@@ -75,13 +88,13 @@ def nh_step(psi: np.ndarray,
     )
 
     psi_new = psi + cfg.dt * dpsi_dt + np.sqrt(cfg.dt) * noise
-    
+
     # 稳定性监控
     max_amp = np.max(np.abs(psi_new))
     if max_amp > 10.0:
         print(f"警告：场振幅过大 {max_amp:.2e}，进行裁剪")
         psi_new = np.clip(psi_new, -10.0, 10.0)
-        
+
     return psi_new
 
 
@@ -119,7 +132,7 @@ def test_intensity_mapping():
         all_correct &= ok
         status = "✓" if ok else "✗"
         print(f"符号 {s}: 强度={I:.4f}, 读取={read} {status}")
-    
+
     if all_correct:
         print("✅ 所有符号映射正确！")
     else:
@@ -128,7 +141,7 @@ def test_intensity_mapping():
 
 
 # ----------------------------------------
-# 3. 纸带初始化 & Struct-+1 Gate
+# 3. 纸带初始化 & Struct-+1 Gate（经典 PPM）
 # ----------------------------------------
 def random_tape(n: int = N) -> np.ndarray:
     """生成随机 0..3 纸带"""
@@ -147,9 +160,7 @@ def psi_to_tape(psi: np.ndarray) -> np.ndarray:
     return vec_symbol_from_intensity(I)
 
 
-def apply_struct_plus_one_gate(psi: np.ndarray,
-                               logical_sym: int,
-                               pin_k: float = 1.0) -> (np.ndarray, int):
+def apply_struct_plus_one_gate(psi: np.ndarray, logical_sym: int, pin_k: float = 1.0):
     """
     Struct-+1 Gate:
       logical_sym: n -> (n+1) mod 4
@@ -167,12 +178,14 @@ def apply_struct_plus_one_gate(psi: np.ndarray,
 # ----------------------------------------
 # 4. 单次 Struct-+1 PPM 测试（结构锁定演示）
 # ----------------------------------------
-def demo_struct_ppm(cfg: NHConfig,
-                    gamma: float = 0.05,
-                    noise_scale: float = 2e-3,
-                    steps_per_logic: int = 50,
-                    logic_steps: int = 8,
-                    pin_k: float = 1.0):
+def demo_struct_ppm(
+    cfg: NHConfig,
+    gamma: float = 0.05,
+    noise_scale: float = 2e-3,
+    steps_per_logic: int = 50,
+    logic_steps: int = 8,
+    pin_k: float = 1.0,
+):
     """
     演示：在稳定非厄米介质上跑若干次 Struct-+1 逻辑循环，
     观察逻辑/物理符号历史的一致性。
@@ -214,12 +227,14 @@ def demo_struct_ppm(cfg: NHConfig,
         I = intensity(psi)
         s_phys = symbol_from_intensity(I[r0, c0])
         match = "✓" if logical_sym == s_phys else "✗"
-        
+
         logic_hist.append(logical_sym)
         phys_hist.append(s_phys)
         intensity_hist.append(I[r0, c0])
 
-        print(f"{k:4d} {logic_hist[-2]:3} -> {logical_sym:1} {s_phys:5} {I[r0,c0]:11.3e} {match:^6}")
+        print(
+            f"{k:4d} {logic_hist[-2]:3} -> {logical_sym:1} {s_phys:5} {I[r0,c0]:11.3e} {match:^6}"
+        )
 
     # 最终纸带
     tape_final = psi_to_tape(psi)
@@ -231,44 +246,46 @@ def demo_struct_ppm(cfg: NHConfig,
     matches = sum(int(l == p) for l, p in zip(logic_hist[1:], phys_hist[1:]))
     total = len(logic_hist) - 1
     acc = matches / total if total > 0 else 0.0
-    
+
     print(f"\n=== 性能统计 ===")
     print(f"逻辑与物理状态匹配: {matches}/{total} ({acc*100:.1f}%)")
-    
+
     # 可视化演化历史
     plt.figure(figsize=(12, 4))
-    
+
     plt.subplot(1, 2, 1)
-    plt.plot(logic_hist, 'o-', label='逻辑状态', linewidth=2, markersize=8)
-    plt.plot(phys_hist, 's-', label='物理状态', linewidth=2, markersize=6)
-    plt.xlabel('逻辑步')
-    plt.ylabel('符号状态')
-    plt.title('Struct-+1 PPM 状态演化')
+    plt.plot(logic_hist, "o-", label="逻辑状态", linewidth=2, markersize=8)
+    plt.plot(phys_hist, "s-", label="物理状态", linewidth=2, markersize=6)
+    plt.xlabel("逻辑步")
+    plt.ylabel("符号状态")
+    plt.title("Struct-+1 PPM 状态演化")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
+
     plt.subplot(1, 2, 2)
-    plt.semilogy(intensity_hist, 'o-', color='red', linewidth=2, markersize=6)
-    plt.xlabel('逻辑步')
-    plt.ylabel('强度 (log scale)')
-    plt.title('Data Cell 强度演化')
+    plt.semilogy(intensity_hist, "o-", linewidth=2, markersize=6)
+    plt.xlabel("逻辑步")
+    plt.ylabel("强度 (log scale)")
+    plt.title("Data Cell 强度演化")
     plt.grid(True, alpha=0.3)
-    
+
     plt.tight_layout()
     plt.show()
-    
+
     return acc, logic_hist, phys_hist
 
 
 # ----------------------------------------
 # 5. 寿命扫描：结构反馈 vs 无反馈
 # ----------------------------------------
-def simulate_lifetime_single_run_struct(cfg: NHConfig,
-                                        gamma: float,
-                                        noise_scale: float,
-                                        max_logic_steps: int = 200,
-                                        steps_per_logic: int = 50,
-                                        pin_k: float = 1.0) -> int:
+def simulate_lifetime_single_run_struct(
+    cfg: NHConfig,
+    gamma: float,
+    noise_scale: float,
+    max_logic_steps: int = 200,
+    steps_per_logic: int = 50,
+    pin_k: float = 1.0,
+) -> int:
     """
     单次寿命模拟（有结构反馈）：
       返回第一次逻辑/物理不一致的逻辑步编号（1..max），
@@ -297,11 +314,13 @@ def simulate_lifetime_single_run_struct(cfg: NHConfig,
     return max_logic_steps + 1  # 视作未失败
 
 
-def simulate_lifetime_single_run_nofb(cfg: NHConfig,
-                                      gamma: float,
-                                      noise_scale: float,
-                                      max_logic_steps: int = 200,
-                                      steps_per_logic: int = 50) -> int:
+def simulate_lifetime_single_run_nofb(
+    cfg: NHConfig,
+    gamma: float,
+    noise_scale: float,
+    max_logic_steps: int = 200,
+    steps_per_logic: int = 50,
+) -> int:
     """
     单次寿命模拟（无结构反馈对照）：
       逻辑层仍做 +1 mod 4，但不向介质写入 Struct-+1。
@@ -330,12 +349,14 @@ def simulate_lifetime_single_run_nofb(cfg: NHConfig,
     return max_logic_steps + 1
 
 
-def scan_lifetime_vs_noise(cfg: NHConfig,
-                           gamma: float = 0.05,
-                           pin_k: float = 1.0,
-                           max_logic_steps: int = 200,
-                           steps_per_logic: int = 50,
-                           runs: int = 100):
+def scan_lifetime_vs_noise(
+    cfg: NHConfig,
+    gamma: float = 0.05,
+    pin_k: float = 1.0,
+    max_logic_steps: int = 200,
+    steps_per_logic: int = 50,
+    runs: int = 100,
+):
     """扫描寿命随噪声的变化"""
     print(f"\n=== 寿命 vs 噪声扫描 ===")
     print(f"配置: {cfg}")
@@ -350,7 +371,7 @@ def scan_lifetime_vs_noise(cfg: NHConfig,
     for noise in tqdm(noise_list, desc="噪声扫描"):
         T_struct = []
         T_nofb = []
-        
+
         for _ in tqdm(range(runs), desc=f"Noise={noise:.1e}", leave=False):
             T_struct.append(
                 simulate_lifetime_single_run_struct(
@@ -362,7 +383,7 @@ def scan_lifetime_vs_noise(cfg: NHConfig,
                     cfg, gamma, noise, max_logic_steps, steps_per_logic
                 )
             )
-            
+
         T_struct = np.array(T_struct, dtype=float)
         T_nofb = np.array(T_nofb, dtype=float)
 
@@ -376,31 +397,47 @@ def scan_lifetime_vs_noise(cfg: NHConfig,
         surv_struct.append(surv_frac_struct)
         surv_nofb.append(surv_frac_nofb)
 
-        print(f"noise={noise:7.1e} -> "
-              f"E[T]_struct={E_struct:6.1f}, E[T]_nofb={E_nofb:6.1f}, "
-              f"surv_struct={surv_frac_struct:.2f}, surv_nofb={surv_frac_nofb:.2f}")
+        print(
+            f"noise={noise:7.1e} -> "
+            f"E[T]_struct={E_struct:6.1f}, E[T]_nofb={E_nofb:6.1f}, "
+            f"surv_struct={surv_frac_struct:.2f}, surv_nofb={surv_frac_nofb:.2f}"
+        )
 
     # 可视化结果
     plt.figure(figsize=(12, 5))
-    
+
     plt.subplot(1, 2, 1)
-    plt.semilogx(noise_list, et_struct, 'o-', label='Struct-+1 (有反馈)', linewidth=2, markersize=6)
-    plt.semilogx(noise_list, et_nofb, 's-', label='无反馈', linewidth=2, markersize=6)
-    plt.xlabel('噪声强度')
-    plt.ylabel('平均寿命 (逻辑步)')
-    plt.title('寿命 vs 噪声')
+    plt.semilogx(
+        noise_list,
+        et_struct,
+        "o-",
+        label="Struct-+1 (有反馈)",
+        linewidth=2,
+        markersize=6,
+    )
+    plt.semilogx(noise_list, et_nofb, "s-", label="无反馈", linewidth=2, markersize=6)
+    plt.xlabel("噪声强度")
+    plt.ylabel("平均寿命 (逻辑步)")
+    plt.title("寿命 vs 噪声")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
+
     plt.subplot(1, 2, 2)
-    plt.semilogx(noise_list, surv_struct, 'o-', label='Struct-+1 (有反馈)', linewidth=2, markersize=6)
-    plt.semilogx(noise_list, surv_nofb, 's-', label='无反馈', linewidth=2, markersize=6)
-    plt.xlabel('噪声强度')
-    plt.ylabel('存活概率')
-    plt.title('存活概率 vs 噪声')
+    plt.semilogx(
+        noise_list,
+        surv_struct,
+        "o-",
+        label="Struct-+1 (有反馈)",
+        linewidth=2,
+        markersize=6,
+    )
+    plt.semilogx(noise_list, surv_nofb, "s-", label="无反馈", linewidth=2, markersize=6)
+    plt.xlabel("噪声强度")
+    plt.ylabel("存活概率")
+    plt.title("存活概率 vs 噪声")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    
+
     plt.tight_layout()
     plt.show()
 
@@ -410,13 +447,15 @@ def scan_lifetime_vs_noise(cfg: NHConfig,
 # ----------------------------------------
 # 6. gamma-noise 相图：结构锁定 vs 失稳
 # ----------------------------------------
-def scan_phase_diagram(cfg: NHConfig,
-                       gammas=None,
-                       noises=None,
-                       max_logic_steps: int = 200,
-                       steps_per_logic: int = 50,
-                       runs: int = 50,
-                       pin_k: float = 1.0):
+def scan_phase_diagram(
+    cfg: NHConfig,
+    gammas=None,
+    noises=None,
+    max_logic_steps: int = 200,
+    steps_per_logic: int = 50,
+    runs: int = 50,
+    pin_k: float = 1.0,
+):
     """扫描 gamma-noise 相图"""
     if gammas is None:
         gammas = [1e-2, 2e-2, 5e-2, 1e-1, 2e-1]
@@ -438,7 +477,9 @@ def scan_phase_diagram(cfg: NHConfig,
             for _ in range(runs):
                 T_list.append(
                     simulate_lifetime_single_run_struct(
-                        cfg, gamma=g, noise_scale=n,
+                        cfg,
+                        gamma=g,
+                        noise_scale=n,
                         max_logic_steps=max_logic_steps,
                         steps_per_logic=steps_per_logic,
                         pin_k=pin_k,
@@ -452,37 +493,61 @@ def scan_phase_diagram(cfg: NHConfig,
 
     # 可视化相图
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
-    
+
     # 平均寿命热图
-    im1 = ax1.imshow(E_mat, cmap='viridis', origin='lower', 
-                    extent=[min(noises), max(noises), min(gammas), max(gammas)], 
-                    aspect='auto')
-    ax1.set_xlabel('噪声强度')
-    ax1.set_ylabel('耗散强度 γ')
-    ax1.set_title('平均寿命热图')
-    plt.colorbar(im1, ax=ax1, label='平均寿命')
-    
+    im1 = ax1.imshow(
+        E_mat,
+        cmap="viridis",
+        origin="lower",
+        extent=[min(noises), max(noises), min(gammas), max(gammas)],
+        aspect="auto",
+    )
+    ax1.set_xlabel("噪声强度")
+    ax1.set_ylabel("耗散强度 γ")
+    ax1.set_title("平均寿命热图")
+    plt.colorbar(im1, ax=ax1, label="平均寿命")
+
     # 添加数值标注
     for i in range(len(gammas)):
         for j in range(len(noises)):
-            ax1.text(noises[j], gammas[i], f'{E_mat[i,j]:.0f}', 
-                    ha='center', va='center', color='white', fontweight='bold')
-    
+            ax1.text(
+                noises[j],
+                gammas[i],
+                f"{E_mat[i,j]:.0f}",
+                ha="center",
+                va="center",
+                color="white",
+                fontweight="bold",
+            )
+
     # 存活概率热图
-    im2 = ax2.imshow(S_mat, cmap='plasma', origin='lower',
-                    extent=[min(noises), max(noises), min(gammas), max(gammas)],
-                    aspect='auto', vmin=0, vmax=1)
-    ax2.set_xlabel('噪声强度')
-    ax2.set_ylabel('耗散强度 γ')
-    ax2.set_title('存活概率热图')
-    plt.colorbar(im2, ax=ax2, label='存活概率')
-    
+    im2 = ax2.imshow(
+        S_mat,
+        cmap="plasma",
+        origin="lower",
+        extent=[min(noises), max(noises), min(gammas), max(gammas)],
+        aspect="auto",
+        vmin=0,
+        vmax=1,
+    )
+    ax2.set_xlabel("噪声强度")
+    ax2.set_ylabel("耗散强度 γ")
+    ax2.set_title("存活概率热图")
+    plt.colorbar(im2, ax=ax2, label="存活概率")
+
     # 添加数值标注
     for i in range(len(gammas)):
         for j in range(len(noises)):
-            ax2.text(noises[j], gammas[i], f'{S_mat[i,j]:.2f}', 
-                    ha='center', va='center', color='white', fontweight='bold')
-    
+            ax2.text(
+                noises[j],
+                gammas[i],
+                f"{S_mat[i,j]:.2f}",
+                ha="center",
+                va="center",
+                color="white",
+                fontweight="bold",
+            )
+
     plt.tight_layout()
     plt.show()
 
@@ -490,49 +555,108 @@ def scan_phase_diagram(cfg: NHConfig,
 
 
 # ----------------------------------------
-# 7. 主执行函数
+# 7. PennyLane DV 量子 Struct-+1 Gate 测试
+# ----------------------------------------
+
+# 2比特 = 4 维 Hilbert 空间，用 permutation 矩阵实现 +1 (mod 4)
+def build_plus_one_unitary():
+    U = qnp.zeros((4, 4), dtype=qnp.complex128)
+    for j in range(4):
+        i = (j + 1) % 4  # |j> -> |(j+1) mod 4>
+        U[i, j] = 1.0
+    return U
+
+
+U_plus_one = build_plus_one_unitary()
+
+dev_dv = qml.device("default.qubit", wires=2)
+
+
+@qml.qnode(dev_dv, interface="auto")
+def plus_one_circuit(s: int):
+    """
+    PennyLane DV 上实现的 Struct-+1：
+      输入 s ∈ {0,1,2,3}，输出 (s+1) mod 4 的概率分布
+    """
+    # 把整数 s 编码成二进制 |b0 b1>
+    # PennyLane BasisState 使用大端编码：state_index = b0*2 + b1
+    b0 = (s >> 1) & 1
+    b1 = s & 1
+    qml.BasisState(qnp.array([b0, b1], dtype=int), wires=[0, 1])
+
+    # 应用 +1 (mod 4) 的单位矩阵
+    qml.QubitUnitary(U_plus_one, wires=[0, 1])
+
+    return qml.probs(wires=[0, 1])
+
+
+def test_pennylane_plus_one():
+    print("\n=== PennyLane DV Struct-+1 Gate 测试 ===")
+    for s in range(4):
+        probs = plus_one_circuit(s)
+        # 找到概率最大的输出态
+        out_index = int(qnp.argmax(probs))
+        target = (s + 1) % 4
+        status = "✓" if out_index == target else "✗"
+        print(
+            f"输入 s={s} -> 量子电路输出={out_index}, 期望={(s+1)%4}, "
+            f"probs={probs}, {status}"
+        )
+
+
+# ----------------------------------------
+# 8. 主执行函数
 # ----------------------------------------
 def main():
     """主执行函数"""
-    print("开始非厄米 PPM 完整模拟...")
+    print("\n开始非厄米 PPM + PennyLane 测试...")
     start_time = time.time()
-    
+
     # 配置参数
     cfg = NHConfig(dt=1e-3, lap_coeff=1e-2, beta=1e-2)
-    
-    # 1. 测试强度映射
+
+    # A. 强度映射测试
     mapping_ok = test_intensity_mapping()
     if not mapping_ok:
         print("❌ 强度映射测试失败，停止执行")
         return
-    
-    # 2. 单次 PPM 演示
-    print("\n" + "="*50)
+
+    # B. PennyLane DV Struct-+1 Gate 测试
+    test_pennylane_plus_one()
+
+    # C. 单次 PPM Struct-+1 演示
+    print("\n" + "=" * 50)
     acc, logic_hist, phys_hist = demo_struct_ppm(
-        cfg, gamma=0.05, noise_scale=2e-3, 
-        steps_per_logic=50, logic_steps=12, pin_k=1.0
+        cfg, gamma=0.05, noise_scale=2e-3, steps_per_logic=50, logic_steps=12, pin_k=1.0
     )
-    
-    # 3. 寿命扫描（简化版，减少运行次数以节省时间）
-    print("\n" + "="*50)
+
+    # D. 寿命扫描（可适当减 runs 加快）
+    print("\n" + "=" * 50)
     noise_list, et_struct, et_nofb, surv_struct, surv_nofb = scan_lifetime_vs_noise(
-        cfg, gamma=0.05, pin_k=1.0,
-        max_logic_steps=100, steps_per_logic=50, runs=50  # 减少运行次数
+        cfg,
+        gamma=0.05,
+        pin_k=1.0,
+        max_logic_steps=100,
+        steps_per_logic=50,
+        runs=50,  # 你之前已经用过这个配置
     )
-    
-    # 4. 相图扫描（简化版）
-    print("\n" + "="*50)
+
+    # E. 相图扫描（简化版）
+    print("\n" + "=" * 50)
     gammas, noises, E_mat, S_mat = scan_phase_diagram(
         cfg,
-        gammas=[1e-2, 5e-2, 1e-1],  # 简化参数
+        gammas=[1e-2, 5e-2, 1e-1],
         noises=[1e-2, 5e-2, 1e-1, 2e-1],
-        max_logic_steps=100, steps_per_logic=50, runs=30  # 减少运行次数
+        max_logic_steps=100,
+        steps_per_logic=50,
+        runs=30,
     )
-    
+
     elapsed_time = time.time() - start_time
     print(f"\n=== 模拟完成 ===")
     print(f"总运行时间: {elapsed_time:.1f} 秒")
     print(f"最终 PPM 准确率: {acc*100:.1f}%")
+
 
 # 执行主函数
 if __name__ == "__main__":
