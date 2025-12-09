@@ -1,31 +1,21 @@
 import Mathlib.Data.Real.Basic
-import Mathlib.Data.Nat.Basic
 
 noncomputable section
 
-/-
-Route C：从几何泄漏上界，形式化推出寿命的下界。
-
-ShellProfile:
-  * leakage L    : 泄漏率 Γ(L)
-  * geomBound L  : 几何上界 G(L)
-  * leakage_nonneg  : Γ(L) ≥ 0
-  * geomBound_pos   : G(L) > 0
-  * leakage_le_geom : Γ(L) ≤ G(L)
-
-ExpGeomProfile 额外假设：
-  * G(L) ≤ A * α^(L^2)  （面积律形式），A>0, 0<α<1
-
-核心结论：
-  τ(L) = 1 / Γ(L) ≥ 1 / (A * α^(L^2))  （在 Γ(L) > 0 时）
--/
-
 namespace NonHermitianAreaLaw
 
-/-- 抽象的“壳层泄漏模型” -/
+/-- 
+一个抽象的“壳层泄漏”模型：
+
+* `leakage L`    : 系统尺寸为 `L` 时的泄漏率 Γ(L)
+* `geomBound L`  : 来自几何/微扰估计的泄漏上界
+* `leakage_nonneg`  : Γ(L) ≥ 0
+* `geomBound_pos`   : 几何上界严格为正
+* `leakage_le_geom` : Γ(L) ≤ 几何上界
+-/
 structure ShellProfile where
-  leakage    : ℕ → ℝ     -- Γ(L)
-  geomBound  : ℕ → ℝ     -- G(L)
+  leakage    : ℕ → ℝ
+  geomBound  : ℕ → ℝ
   leakage_nonneg  : ∀ L, 0 ≤ leakage L
   geomBound_pos   : ∀ L, 0 < geomBound L
   leakage_le_geom : ∀ L, leakage L ≤ geomBound L
@@ -34,63 +24,66 @@ namespace ShellProfile
 
 variable (P : ShellProfile)
 
-/--
-寿命定义：τ(L) = 1 / Γ(L)；
-约定：如果 leakage L = 0，则 τ(L) = 0。
+/-- 
+寿命定义：`τ(L) = 1 / leakage(L)`；  
+为避免除以 0，当 `leakage(L) = 0` 时约定 τ(L)=0。
 -/
 def lifetime (L : ℕ) : ℝ :=
   if h : P.leakage L = 0 then 0 else 1 / P.leakage L
 
-/-- 寿命总是非负。 -/
+/-- 寿命总是非负：τ(L) ≥ 0。 -/
 lemma lifetime_nonneg (L : ℕ) : 0 ≤ P.lifetime L := by
   unfold ShellProfile.lifetime
   split_ifs with h
-  · -- case: leakage L = 0
+  · -- 情形 leakage(L)=0
     simp [h]
-  · -- case: leakage L ≠ 0
+  · -- 情形 leakage(L) ≠ 0
     have hnn : 0 ≤ P.leakage L := P.leakage_nonneg L
     have hne : P.leakage L ≠ 0 := h
-    have hpos : 0 < P.leakage L :=
-      lt_of_le_of_ne hnn (Ne.symm hne)
-    have h_inv_nonneg : 0 ≤ (P.leakage L)⁻¹ :=
+    have hpos : 0 < P.leakage L := lt_of_le_of_ne hnn (Ne.symm hne)
+    have h_inv : 0 ≤ (P.leakage L)⁻¹ :=
       inv_nonneg.mpr (le_of_lt hpos)
-    simpa [one_div] using h_inv_nonneg
+    simpa [h, one_div] using h_inv
 
 /--
-**Route C，Level 1：**
+**Route C, Level 1：几何泄漏上界 ⇒ 寿命下界**
 
-假设 `leakage(L) > 0` 且 `leakage(L) ≤ geomBound(L)`，
-则
-  τ(L) ≥ 1 / geomBound(L)。
+假设某个尺寸 `L` 下泄漏率满足 `leakage(L) > 0`，并且  
+`leakage(L) ≤ geomBound(L)`，则有  
+
+\[
+  \tau(L) \;\ge\; \frac{1}{\mathrm{geomBound}(L)}.
+\]
+
+这是从 Γ ≤ Γ\_geom 推出 τ ≥ 1/Γ\_geom 的形式化版本。
 -/
 lemma lifetime_ge_inv_geomBound
-    (L : ℕ)
-    (h_pos : 0 < P.leakage L) :
+    (L : ℕ) (h_pos : 0 < P.leakage L) :
     1 / P.geomBound L ≤ P.lifetime L := by
-  have h_leak_ne : P.leakage L ≠ 0 := ne_of_gt h_pos
-  -- 已知：leakage(L) ≤ geomBound(L)
+  -- 1) 几何上界：leakage(L) ≤ geomBound(L)
   have h_le : P.leakage L ≤ P.geomBound L := P.leakage_le_geom L
-
-  -- 使用 1/x 在 (0,+∞) 的单调性：
-  -- one_div_le_one_div_of_le : 0 < a → a ≤ b → 1 / b ≤ 1 / a
-  -- 这里取 a = leakage(L), b = geomBound(L)
+  -- 2) 由 0<leakage≤geomBound，倒数单调性：1/geomBound ≤ 1/leakage
   have h_div : 1 / P.geomBound L ≤ 1 / P.leakage L := by
     have := one_div_le_one_div_of_le h_pos h_le
     simpa [one_div] using this
-
-  -- 展开 lifetime，leakage ≠ 0 时：lifetime = 1 / leakage
+  -- 3) 用寿命定义：τ(L) = 1 / leakage(L)
   unfold ShellProfile.lifetime
-  simpa [h_leak_ne] using h_div
+  have h_ne : P.leakage L ≠ 0 := ne_of_gt h_pos
+  simpa [h_ne] using h_div
 
 end ShellProfile
 
-/--
-带有指数几何上界的壳层模型：
+/-- 
+带“指数几何上界”的版本：在 `ShellProfile` 基础上再加上面积律几何界。
 
-在 ShellProfile 基础上，额外假设常数 A, α, L0 满足
-  * A > 0
-  * 0 < α < 1
-  * ∀ L ≥ L0, geomBound(L) ≤ A * α^(L^2)
+假设存在常数 `A>0`，`0<α<1`，以及阈值尺寸 `L0`，使得  
+对所有 `L ≥ L0` 有
+
+\[
+  \mathrm{geomBound}(L) \;\le\; A \, α^{L^2}.
+\]
+
+这是你物理解读里的“面积律几何泄漏上界”。
 -/
 structure ExpGeomProfile extends ShellProfile where
   A      : ℝ
@@ -99,53 +92,56 @@ structure ExpGeomProfile extends ShellProfile where
   hA_pos : 0 < A
   hα_pos : 0 < α
   hα_lt_one : α < 1
-  geom_le_exp :
-    ∀ ⦃L : ℕ⦄, L ≥ L0 → geomBound L ≤ A * α^(L^2)
+  geom_le_exp : ∀ {L : ℕ}, L ≥ L0 → geomBound L ≤ A * α^(L^2)
 
 namespace ExpGeomProfile
 
 variable (P : ExpGeomProfile)
 
 /--
-**Route C，Level 2：指数几何上界 ⇒ 寿命指数下界**
+**Route C, Level 2：指数几何上界 ⇒ 指数寿命下界**
 
-若对所有 L ≥ L0 有
-  geomBound(L) ≤ A * α^(L^2)，且 0 < α < 1, A > 0，
-并且在该 L 有 leakage(L) > 0，
-则
-  τ(L) ≥ 1 / (A * α^(L^2))。
+若对所有 `L ≥ L0` 都有
+\[
+  \mathrm{geomBound}(L) \;\le\; A \, α^{L^2},
+\]
+并且该尺寸下泄漏率满足 `leakage(L) > 0`，  
+则对所有 `L ≥ L0` 有
+
+\[
+  \tau(L) \;\ge\; \frac{1}{A\,α^{L^2}}.
+\]
+
+这就是“面积律寿命下界”的抽象数学表述：
+寿命至少是 \(A^{-1} α^{-L^2}\) 量级（α<1）。
 -/
 lemma lifetime_ge_exp
-    (L : ℕ)
-    (hL : L ≥ P.L0)
-    (h_leak_pos : 0 < P.leakage L) :
-    1 / (P.A * P.α^(L^2)) ≤
-      ShellProfile.lifetime (P.toShellProfile) L := by
-  -- 1) geomBound(L) > 0
+    (L : ℕ) (hL : L ≥ P.L0) (h_leak_pos : 0 < P.leakage L) :
+    1 / (P.A * P.α^(L^2))
+      ≤ ShellProfile.lifetime P.toShellProfile L := by
+  -- Step 1：先把几何上界倒数化：1/(A α^{L²}) ≤ 1/geomBound(L)
   have h_geom_pos : 0 < P.geomBound L := P.geomBound_pos L
-  -- 2) geomBound(L) ≤ A * α^(L^2)
   have h_geom_le_exp : P.geomBound L ≤ P.A * P.α^(L^2) :=
     P.geom_le_exp (L := L) hL
-
-  -- 3) 由 0 < geom ≤ A α^(L²) 得到 1 / (A α^(L²)) ≤ 1 / geom
   have h_one_div :
       1 / (P.A * P.α^(L^2)) ≤ 1 / P.geomBound L := by
-    -- one_div_le_one_div_of_le : 0 < a → a ≤ b → 1 / b ≤ 1 / a
-    -- 在这里 a = geomBound(L), b = A * α^(L²)
+    -- 注意这里 a = geomBound(L), b = A α^{L²}：
+    -- 0 < a, a ≤ b ⇒ 1/b ≤ 1/a
     have := one_div_le_one_div_of_le h_geom_pos h_geom_le_exp
     simpa [one_div] using this
 
-  -- 4) Route C Level 1：1 / geomBound ≤ lifetime
+  -- Step 2：再用 ShellProfile 的引理：1/geomBound(L) ≤ τ(L)
   have h_life :
       1 / P.geomBound L ≤
         ShellProfile.lifetime P.toShellProfile L :=
     ShellProfile.lifetime_ge_inv_geomBound
       (P := P.toShellProfile) L h_leak_pos
 
-  -- 5) 链接两个不等式
+  -- Step 3：串起来
   exact le_trans h_one_div h_life
 
 end ExpGeomProfile
 
 end NonHermitianAreaLaw
+
 
