@@ -1,5 +1,5 @@
 # ============================================================
-# Colab 单 cell：Area-Law Exponential Protection 验证（修复版）
+# Colab 单 cell：Area-Law Exponential Protection 验证（含深入检查）
 # ============================================================
 
 import numpy as np
@@ -73,7 +73,7 @@ class NonHermitianCornerGain:
 
     def corner_eigenmode(self):
         """
-        选取 Im(λ) 最大的右本征矢作为角点角点长寿命模；
+        选取 Im(λ) 最大的右本征矢作为角点长寿命模；
         返回：λ_corner, psi_corner (已归一化), λ_bulk(数组)
         """
         eigvals, eigvecs = eig(self.H)
@@ -169,7 +169,149 @@ def add_hopping_disorder(model, strength=0.1):
 
 
 # ============================================================
-# 4. 主验证：Eigenmode + 动力学 + 面积律 + 无序 + 大系统
+# 4. 深入验证函数
+# ============================================================
+
+def verify_paper_claims(model, psi_c):
+    """
+    检查：
+      1) 角点与最近邻的振幅比 |ψ_1/ψ_0|
+      2) 第一层、第二层衰减是否接近 Ω/η (或 Ω/(η+γ))
+      3) 利用实测的单步衰减构造 α_eff，并与论文 α_eff 对比
+      4) 用实测 α_eff 构造一个 “面积律寿命” 与 论文公式 寿命对比
+    """
+    L = model.L
+    psi_map = psi_c.reshape((L, L))
+    eta = model.eta
+    gamma = model.gamma
+    Omega = model.Omega
+    
+    print("\n=== 详细验证论文公式 (Local Interface → Area Law) ===")
+    
+    # 角点振幅
+    psi00 = psi_map[0,0]
+    print(f"|ψ(0,0)| = {abs(psi00):.10f}")
+    print(f"|ψ(0,0)|² = {abs(psi00)**2:.10f}")
+    
+    # 第一层最近邻（曼哈顿距离=1）
+    print(f"\n--- 第一层邻居（d=1, 最近邻）---")
+    layer1_positions = [(1,0), (0,1)]
+    ratios = []
+    for nx, ny in layer1_positions:
+        psi_n = psi_map[ny, nx]
+        ratio = abs(psi_n/psi00)
+        ratios.append(ratio)
+        print(f"|ψ({nx},{ny})/ψ(0,0)| = {ratio:.10f}")
+    
+    avg_ratio1 = np.mean(ratios)
+    print(f"平均衰减比 (d=1) = {avg_ratio1:.10f}")
+    
+    # 第二层（距离 d=2）
+    print(f"\n--- 第二层（d=2）---")
+    layer2_positions = [(2,0), (1,1), (0,2)]
+    for nx, ny in layer2_positions:
+        psi_n = psi_map[ny, nx]
+        ratio = abs(psi_n/psi00)
+        print(f"|ψ({nx},{ny})/ψ(0,0)| = {ratio:.10f}")
+        if (nx, ny) == (1,1):
+            expected = (Omega/eta)**2
+            print(f"  期望(Ω/η)² = {expected:.10f}")
+    
+    # 理论预测比较
+    print(f"\n=== 理论局域约束比较 ===")
+    print(f"论文局域预测: ψ₁/ψ₀ ≈ Ω/η       = {Omega/eta:.10f}")
+    print(f"修正局域预测: ψ₁/ψ₀ ≈ Ω/(η+γ) = {Omega/(eta+gamma):.10f}")
+    print(f"数值平均    : ⟨|ψ₁/ψ₀|⟩       = {avg_ratio1:.10f}")
+    
+    # 有效衰减因子（结合配位数 z=4）
+    effective_alpha = avg_ratio1**4  # α_eff ~ (ψ1/ψ0)^z
+    print(f"\n有效衰减因子 α_eff_num = (⟨|ψ₁/ψ₀|⟩)⁴ = {effective_alpha:.10f}")
+    print(f"论文 α_eff_th = 4Ω/η             = {4*Omega/eta:.10f}")
+    print(f"修正 α_eff_corr = 4Ω/(η+γ)       = {4*Omega/(eta+gamma):.10f}")
+    
+    # 面积律验证（用 α_eff 的倒数视作基准）
+    print(f"\n=== 面积律寿命验证（数值 α_eff vs 论文公式） ===")
+    L = model.L
+    tau_paper = (eta/(4*Omega))**(L*L)  # 论文公式
+    if effective_alpha > 0:
+        # 如果把 “单步抑制” 理解为 α_eff_num < 1，则逃逸时间 ~ (1/α_eff_num)^{L²}
+        tau_measured = (1.0/effective_alpha)**(L*L)
+        print(f"论文公式预测: τ_paper = {tau_paper:.3e}")
+        print(f"数值 α_eff 预测: τ_num  = {tau_measured:.3e}")
+        print(f"比值 tau_paper / tau_num = {tau_paper/tau_measured:.3f}")
+    else:
+        print("effective_alpha <= 0，无法构造 τ_num")
+
+    # 全局权重检查
+    total_corner_weight = abs(psi00)**2
+    bulk_weight = 1 - total_corner_weight
+    print(f"\n角点权重 = {total_corner_weight:.10f}")
+    print(f"体区权重 = {bulk_weight:.10f}")
+
+
+def check_hamiltonian_details(model):
+    """检查哈密顿量的具体数值结构"""
+    H = model.H
+    print("\n=== 哈密顿量细节检查 ===")
+    
+    # 角点项
+    print(f"角点 H[0,0] = {H[0,0]:.6f}")
+    print(f"  Re(H[0,0]) = {np.real(H[0,0]):.6f}")
+    print(f"  Im(H[0,0]) = {np.imag(H[0,0]):.6f}")
+    
+    # 一个体点（1,0）对应 index=1
+    print(f"体点 H[1,1] = {H[1,1]:.6f}")
+    print(f"  Re(H[1,1]) = {np.real(H[1,1]):.6f}")
+    print(f"  Im(H[1,1]) = {np.imag(H[1,1]):.6f}")
+    
+    # 角点与邻居的跳跃
+    print(f"\n跃迁矩阵元:")
+    print(f"H[0,1]   (角点→(1,0)) = {H[0,1]:.6f}")
+    print(f"H[0,{model.L}] (角点→(0,1)) = {H[0,model.L]:.6f}")
+    
+    # 本征值检查
+    vals, vecs = eig(H)
+    idx = np.argmax(np.imag(vals))
+    lam = vals[idx]
+    print(f"\n角点本征值 λ_max = {lam:.10f}")
+    print(f"Re(λ_max) = {np.real(lam):.10f}")
+    print(f"Im(λ_max) = {np.imag(lam):.10f}")
+    print(f"λ_max / (iη) = {lam/(1j*model.eta):.10f}")
+
+
+def parameter_sensitivity():
+    """
+    分析不同 Ω 下：
+      - Im(λ_corner)
+      - |ψ(0)|²
+      - ⟨|ψ_neighbor/ψ_corner|⟩
+    与 Ω/η, Ω/(η+γ) 的对比
+    """
+    print("\n=== 参数敏感性分析: 改变 Ω, 固定 L=4, η=1, γ=1 ===")
+    
+    L = 4
+    Omega_values = [0.01, 0.02, 0.05, 0.10]
+    
+    for Omega in Omega_values:
+        model_test = NonHermitianCornerGain(L=L, Omega=Omega, eta=1.0, gamma=1.0)
+        lam, psi, _ = model_test.corner_eigenmode()
+        corner_pop = abs(psi[0])**2
+        
+        # 第一层衰减
+        psi_map = psi.reshape((L, L))
+        psi00 = psi_map[0,0]
+        ratio_avg = (abs(psi_map[1,0]/psi00) + abs(psi_map[0,1]/psi00))/2
+        
+        print(f"\nΩ = {Omega:.3f}:")
+        print(f"  Im(λ_corner) = {np.imag(lam):.6f}")
+        print(f"  |ψ(0)|²       = {corner_pop:.6f}")
+        print(f"  ⟨|ψ₁/ψ₀|⟩     = {ratio_avg:.6f}")
+        print(f"  Ω/η           = {Omega/1.0:.6f}")
+        print(f"  Ω/(η+γ)       = {Omega/2.0:.6f}")
+
+
+# ============================================================
+# 5. 主验证：Eigenmode + 动力学 + 面积律 + 无序 + 大系统
 # ============================================================
 
 Omega = 0.02
@@ -277,7 +419,6 @@ log10_tau_large = np.log10(tau_large)
 print(f"L={L_large}, η/(4Ω) = {ratio_large:.2f}")
 print(f"Predicted lifetime τ ≈ {tau_large:.3e}")
 print(f"log₁₀ τ = {log10_tau_large:.2f} ≈ 10^{log10_tau_large:.0f}")
-
 # 宇宙年龄对比
 universe_age_sec = 4.3e17
 ratio_univ = tau_large / universe_age_sec
@@ -291,3 +432,12 @@ print("2) Non-Hermitian time evolution (conditional state) shows a stable corner
 print("3) Theoretical lifetime obeys the area-law scaling τ ~ (η/4Ω)^{L²}.")
 print("4) Hopping disorder up to 20% keeps |ψ(0)|² ≈ 1, confirming robustness.")
 print("5) For L=10, τ ~ 10^{~110}, ~10^{90+} times the age of the universe (theoretical prediction).")
+
+# ============================================================
+# 6. 运行深入验证：局域约束 + 哈密顿量细节 + 参数敏感性
+# ============================================================
+
+verify_paper_claims(model, psi_c)
+check_hamiltonian_details(model)
+parameter_sensitivity()
+
