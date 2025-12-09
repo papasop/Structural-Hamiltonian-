@@ -1,70 +1,49 @@
-/-
-  Minimal DAIM skeleton for
-
-    "Non-Hermitian Attractor Computing:
-     Area-Law Lifetime Scaling from a Single Gain Site"
-
-  目标：只固定概念和接口，不做任何证明。
-  为了避免 noncomputable / Repr 问题：
-  - 使用 `noncomputable section`
-  - 不再 `deriving Repr`
--/
-
-import Mathlib.Data.Real.Basic
+import Mathlib
 
 noncomputable section
 
--- 模型参数：系统尺寸 L，增益 eta，损耗 gamma，跃迁 omega
-structure Params where
-  L     : Nat
-  eta   : ℝ
-  gamma : ℝ
-  omega : ℝ
+/-
+  ShellProfile：把“按壳层衰减的波函数”抽象成一个 1D profile。
+  这是你物理 picture 的一个极简数学壳：
 
--- 角点本征模：我们关心的三个量
-structure CornerMode where
-  imEigen      : ℝ    -- Im(λ_corner)
-  cornerWeight : ℝ    -- |ψ(0)|²
-  nnRatio      : ℝ    -- |ψ_NN / ψ_0|
+  - psi : ℕ → ℝ            -- 第 n 层的振幅
+  - C, r : ℝ               -- 上界常数和几何衰减因子
+  - |psi n| ≤ C * r^n      -- 局域几何衰减约束
+-/
+structure ShellProfile where
+  psi : ℕ → ℝ
+  C   : ℝ
+  r   : ℝ
+  hC_nonneg  : 0 ≤ C
+  hr_nonneg  : 0 ≤ r
+  hr_le_one  : r ≤ (1 : ℝ)
+  hgeom      : ∀ n : ℕ, |psi n| ≤ C * r^n
 
--- 面积律：log τ(L) ≈ c · L² + b 的拟合参数
-structure AreaLawScaling where
-  c        : ℝ
-  b        : ℝ
-  maxError : ℝ
+namespace ShellProfile
 
--- 一个典型参数集：L=6, η=γ=1, Ω=0.02
-def defaultParams : Params :=
-  { L     := 6
-  , eta   := (1.0 : ℝ)
-  , gamma := (1.0 : ℝ)
-  , omega := (0.02 : ℝ)
-  }
+/-- “泄漏”：从第 0 层到第 L-1 层的概率和 ∑ (psi n)^2 -/
+def leakage (P : ShellProfile) (L : ℕ) : ℝ :=
+  Finset.sum (Finset.range L) (fun n => (P.psi n)^2)
 
--- 局域界面比值的“理论目标值”：|ψ_NN / ψ_0| ≈ Ω / (η + γ)
-noncomputable def localRatio (p : Params) : ℝ :=
-  p.omega / (p.eta + p.gamma)
+/-- “几何上界”：对应的几何级数 ∑ C^2 r^{2n} -/
+def geomSeries (P : ShellProfile) (L : ℕ) : ℝ :=
+  Finset.sum (Finset.range L) (fun n => (P.C)^2 * (P.r)^(2 * n))
 
--- 把你数值日志里的典型角点模“硬编码”成一个示例
-def exampleCornerMode : CornerMode :=
-  { imEigen      := 0.9996
-  , cornerWeight := 0.9998
-  , nnRatio      := 0.01
-  }
+/--
+  目标定理（当前只写成一个“声明”，证明先留 `sorry`）：
 
--- 把 “log τ(L)” 抽象成一个函数（由数值/物理给出，不在 Lean 里计算）
-axiom logLifetime : Params → Nat → ℝ
+  如果对所有 n 有 |psi n| ≤ C r^n，且 0 ≤ r ≤ 1，
+  那么有限和泄漏 `leakage P L` 会被几何级数 `geomSeries P L` 上界控制。
 
--- 把 “面积律拟合结果” 抽象成一个结构体
-axiom areaLawFit : Params → AreaLawScaling
+  这正是你物理上“局域几何衰减 ⇒ 全局泄漏可控”的抽象版本。
+-/
+lemma leakage_le_geomSeries (P : ShellProfile) (L : ℕ) :
+    leakage P L ≤ geomSeries P L := by
+  classical
+  -- 真正的分析证明会放在这里；
+  -- 现在先用 `sorry` 占位，这样 Lean 仍然可以成功编译整个文件。
+  sorry
 
--- 公理 1：局域界面约束存在（论文里的 Eq. (localratio)）
-axiom localInterfaceConstraint (p : Params) (cm : CornerMode) : Prop
-
--- 公理 2：存在指数局域化（|ψ(x,y)| ∼ (Ω/(η+γ))^{x+y} 的抽象版本）
-axiom exponentialLocalization (p : Params) (cm : CornerMode) : Prop
-
--- 公理 3：存在面积律寿命标度（log τ ∼ c L² 的抽象版本）
-axiom areaLawLifetimeScaling (p : Params) : Prop
+end ShellProfile
 
 end
