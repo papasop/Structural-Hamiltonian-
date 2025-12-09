@@ -1,0 +1,471 @@
+{\rtf1\ansi\ansicpg936\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset0 Menlo-Bold;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue255;\red255\green255\blue255;\red0\green0\blue0;
+\red15\green112\blue1;\red107\green0\blue1;\red19\green118\blue70;\red144\green1\blue18;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c100000;\cssrgb\c100000\c100000\c100000;\cssrgb\c0\c0\c0;
+\cssrgb\c0\c50196\c0;\cssrgb\c50196\c0\c0;\cssrgb\c3529\c52549\c34510;\cssrgb\c63922\c8235\c8235;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 import\cf0 \strokec4  Mathlib\cb1 \
+\
+\cf2 \cb3 \strokec2 open\cf0 \strokec4  \cf2 \strokec2 scoped\cf0 \strokec4  BigOperators\cb1 \
+\
+\cf2 \cb3 \strokec2 namespace\cf0 \strokec4  StructuralAction\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 1. 3-SAT \uc0\u22522 \u30784 \u35821 \u27861  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u24067 \u23572 \u36171 \u20540 \u65306 \cf6 \strokec6 `n`\cf5 \strokec5  \uc0\u20010 \u21464 \u37327 \u65292 \u23545 \u24212  \cf6 \strokec6 `Fin n \uc0\u8594  Bool`\cf5 \strokec5  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 abbrev\cf0 \strokec4  Assignment (n : Nat) := Fin n \uc0\u8594  Bool\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u23383 \u38754 \u65306 \u21464 \u37327 \u32034 \u24341  + \u26159 \u21542 \u21462 \u21453  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 structure\cf0 \strokec4  Literal (n : Nat) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   var : Fin n\cb1 \
+\cb3   neg : Bool\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u23376 \u21477 \u65306 3 \u20010 \u23383 \u38754  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 abbrev\cf0 \strokec4  Clause (n : Nat) := Fin \cf7 \strokec7 3\cf0 \strokec4  \uc0\u8594  Literal n\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CNF \uc0\u20844 \u24335 \u65306 \u23376 \u21477 \u21015 \u34920  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 abbrev\cf0 \strokec4  CNF (n : Nat) := List (Clause n)\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u35780 \u20215 \u23383 \u38754  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  literalEval \{n : Nat\} (\uc0\u963  : Assignment n) (\u8467  : Literal n) : Bool :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 let\cf0 \strokec4  b := \uc0\u963  \u8467 .var\cb1 \
+\cb3   \cf2 \strokec2 if\cf0 \strokec4  \uc0\u8467 .neg \cf2 \strokec2 then\cf0 \strokec4  !b \cf2 \strokec2 else\cf0 \strokec4  b\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u35780 \u20215  3-\u23376 \u21477  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  clauseEval \{n : Nat\} (\uc0\u963  : Assignment n) (C : Clause n) : Bool :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \cf2 \strokec2 let\cf0 \strokec4  \uc0\u8467 0 := C \u10216 \cf7 \strokec7 0\cf0 \strokec4 , \cf2 \strokec2 by\cf0 \strokec4  \cf2 \strokec2 decide\cf0 \strokec4 \uc0\u10217 \cb1 \
+\cb3   \cf2 \strokec2 let\cf0 \strokec4  \uc0\u8467 1 := C \u10216 \cf7 \strokec7 1\cf0 \strokec4 , \cf2 \strokec2 by\cf0 \strokec4  \cf2 \strokec2 decide\cf0 \strokec4 \uc0\u10217 \cb1 \
+\cb3   \cf2 \strokec2 let\cf0 \strokec4  \uc0\u8467 2 := C \u10216 \cf7 \strokec7 2\cf0 \strokec4 , \cf2 \strokec2 by\cf0 \strokec4  \cf2 \strokec2 decide\cf0 \strokec4 \uc0\u10217 \cb1 \
+\cb3   literalEval \uc0\u963  \u8467 0 || literalEval \u963  \u8467 1 || literalEval \u963  \u8467 2\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u35780 \u20215  CNF\u65306 \u25152 \u26377 \u23376 \u21477 \u30340 \u21512 \u21462  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  cnfEval \{n : Nat\} (\uc0\u963  : Assignment n) (\u934  : CNF n) : Bool :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \uc0\u934 .foldr (\cf2 \strokec2 fun\cf0 \strokec4  C acc => clauseEval \uc0\u963  C && acc) \cf2 \strokec2 true\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u28385 \u36275 \u35299 \u38598 \u21512  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  satSet \{n : Nat\} (\uc0\u934  : CNF n) : Set (Assignment n) :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{ \uc0\u963  | cnfEval \u963  \u934  = \cf2 \strokec2 true\cf0 \strokec4  \}\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 2. \uc0\u33021 \u37327 \u20989 \u25968  E\u65306 \u26410 \u28385 \u36275 \u23376 \u21477 \u20010 \u25968  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u33021 \u37327 \u65306 \u26410 \u28385 \u36275 \u23376 \u21477 \u25968 \u37327  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  energy \{n : Nat\} (\uc0\u934  : CNF n) (\u963  : Assignment n) : Nat :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \uc0\u934 .foldr\cb1 \
+\cb3     (\cf2 \strokec2 fun\cf0 \strokec4  C acc =>\cb1 \
+\cb3       \cf2 \strokec2 let\cf0 \strokec4  ok := clauseEval \uc0\u963  C\cb1 \
+\cb3       acc + (\cf2 \strokec2 if\cf0 \strokec4  ok \cf2 \strokec2 then\cf0 \strokec4  \cf7 \strokec7 0\cf0 \strokec4  \cf2 \strokec2 else\cf0 \strokec4  \cf7 \strokec7 1\cf0 \strokec4 ))\cb1 \
+\cb3     \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u36825 \u37324 \u26242 \u26102 \u29992  axiom\u65306 \u28385 \u36275  <-> \u33021 \u37327 \u20026  0\u12290   \cf0 \cb1 \strokec4 \
+\cf5 \cb3 \strokec5     \uc0\u23558 \u26469 \u20320 \u21487 \u20197 \u29992 \u30495 \u27491 \u30340 \u24402 \u32435 \u35777 \u26126 \u26367 \u25481 \u12290  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 axiom\cf0 \strokec4  sat_iff_energy_zero \{n : Nat\} (\uc0\u934  : CNF n) (\u963  : Assignment n) :\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \uc0\u963  \u8712  satSet \u934  \u8596  energy \u934  \u963  = \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 3. \uc0\u37197 \u32622 \u22270 \u65288 \u27721 \u26126 \u36317 \u31163  1\u65289  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u27721 \u26126 \u36317 \u31163  1 \u30340 \u37051 \u25509 \u20851 \u31995  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  neighbor \{n : Nat\} (\uc0\u963  \u964  : Assignment n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   (Finset.univ.filter (\cf2 \strokec2 fun\cf0 \strokec4  i : Fin n => \uc0\u963  i \u8800  \u964  i)).card = \cf7 \strokec7 1\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u36171 \u20540 \u31354 \u38388 \u19978 \u30340 \u31616 \u21333 \u22270 \u65306 \u36793  = \u27721 \u26126 \u37051 \u23621  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  ConfigGraph (n : Nat) : SimpleGraph (Assignment n) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   Adj \uc0\u963  \u964  := neighbor \u963  \u964 \cb1 \
+\cb3   symm := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3     \cf2 \strokec2 intro\cf0 \strokec4  \uc0\u963  \u964  h\cb1 \
+\cb3     \cf2 \strokec2 dsimp\cf0 \strokec4  [neighbor] \cf2 \strokec2 at\cf0 \strokec4  h \uc0\u8866 \cb1 \
+\cb3     \cf2 \strokec2 have\cf0 \strokec4  hset :\cb1 \
+\cb3       (Finset.univ.filter \cf2 \strokec2 fun\cf0 \strokec4  i : Fin n => \uc0\u963  i \u8800  \u964  i)\cb1 \
+\cb3       =\cb1 \
+\cb3       (Finset.univ.filter \cf2 \strokec2 fun\cf0 \strokec4  i : Fin n => \uc0\u964  i \u8800  \u963  i) := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3       \cf2 \strokec2 apply\cf0 \strokec4  Finset.ext\cb1 \
+\cb3       \cf2 \strokec2 intro\cf0 \strokec4  i\cb1 \
+\cb3       \cf2 \strokec2 simp\cf0 \strokec4  [ne_comm]\cb1 \
+\cb3     \cf2 \strokec2 simpa\cf0 \strokec4  [hset] \cf2 \strokec2 using\cf0 \strokec4  h\cb1 \
+\cb3   loopless := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3     \cf2 \strokec2 intro\cf0 \strokec4  \uc0\u963  h\cb1 \
+\cb3     \cf2 \strokec2 dsimp\cf0 \strokec4  [neighbor] \cf2 \strokec2 at\cf0 \strokec4  h\cb1 \
+\cb3     \cf2 \strokec2 have\cf0 \strokec4  hEmpty :\cb1 \
+\cb3       (Finset.univ.filter \cf2 \strokec2 fun\cf0 \strokec4  i : Fin n => \uc0\u963  i \u8800  \u963  i)\cb1 \
+\cb3       = (\uc0\u8709  : Finset (Fin n)) := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3       \cf2 \strokec2 apply\cf0 \strokec4  Finset.eq_empty_iff_forall_not_mem.mpr\cb1 \
+\cb3       \cf2 \strokec2 intro\cf0 \strokec4  i hi\cb1 \
+\cb3       \cf2 \strokec2 simp\cf0 \strokec4  \cf2 \strokec2 at\cf0 \strokec4  hi\cb1 \
+\cb3     \cf2 \strokec2 have\cf0 \strokec4  hCard :\cb1 \
+\cb3       (Finset.univ.filter \cf2 \strokec2 fun\cf0 \strokec4  i : Fin n => \uc0\u963  i \u8800  \u963  i).card = \cf7 \strokec7 0\cf0 \strokec4  := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3       \cf2 \strokec2 simpa\cf0 \strokec4  [hEmpty] \cf2 \strokec2 using\cf0 \strokec4  (Finset.card_empty : (\uc0\u8709  : Finset (Fin n)).card = \cf7 \strokec7 0\cf0 \strokec4 )\cb1 \
+\cb3     \cf2 \strokec2 have\cf0 \strokec4  : \cf7 \strokec7 0\cf0 \strokec4  = \cf7 \strokec7 1\cf0 \strokec4  := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3       \cf2 \strokec2 simpa\cf0 \strokec4  [hCard] \cf2 \strokec2 using\cf0 \strokec4  h\cb1 \
+\cb3     \cf2 \strokec2 exact\cf0 \strokec4  zero_ne_one this\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 4. \uc0\u25277 \u35937 \u31639 \u27861 \u27169 \u22411  & \u36712 \u36857  \u968  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u25277 \u35937 \u31639 \u27861 \u27169 \u22411 \u65306 \u29366 \u24577 \u31867 \u22411  + init + step + halting -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 structure\cf0 \strokec4  AlgorithmModel (n : Nat) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   StateType : \cf2 \strokec2 Type\cf0 \cb1 \strokec4 \
+\cb3   init     : CNF n \uc0\u8594  StateType\cb1 \
+\cb3   step     : CNF n \uc0\u8594  StateType \u8594  StateType\cb1 \
+\cb3   halting  : CNF n \uc0\u8594  StateType \u8594  \cf2 \strokec2 Prop\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u31639 \u27861 \u22312 \u20844 \u24335  \u934  \u19978 \u30340 \u19968 \u26465 \u26377 \u38480 \u36712 \u36857  \u968  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 structure\cf0 \strokec4  ComputationPath \{n : Nat\} (A : AlgorithmModel n) (\uc0\u934  : CNF n) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   T      : Nat\cb1 \
+\cb3   states : Fin (T+\cf7 \strokec7 1\cf0 \strokec4 ) \uc0\u8594  A.StateType\cb1 \
+\cb3   h_init :\cb1 \
+\cb3     states \uc0\u10216 \cf7 \strokec7 0\cf0 \strokec4 , Nat.succ_pos \cf2 \strokec2 _\cf0 \strokec4 \uc0\u10217  = A.init \u934 \cb1 \
+\cb3   h_step :\cb1 \
+\cb3     \uc0\u8704  t : Fin T,\cb1 \
+\cb3       states \uc0\u10216 t.\cf7 \strokec7 1\cf0 \strokec4 .succ, Nat.succ_lt_succ t.\cf7 \strokec7 2\cf0 \strokec4 \uc0\u10217 \cb1 \
+\cb3         = A.step \uc0\u934  (states t)\cb1 \
+\cb3   h_halt :\cb1 \
+\cb3     A.halting \uc0\u934  (states \u10216 T, Nat.lt_succ_self \cf2 \strokec2 _\cf0 \strokec4 \uc0\u10217 )\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 5. \uc0\u32467 \u26500 \u23494 \u24230  \u955  \u19982 \u20316 \u29992 \u37327  A[\u968 ] 
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u25277 \u35937 \u30340 \u32467 \u26500 \u23494 \u24230 \u65288 \u955 \u65289 \u65292 \u21518 \u38754 \u20320 \u21487 \u20197 \u25442 \u25104  \u955 \u8342  / \u21387 \u32553 \u38271 \u24230  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 noncomputable\cf0 \cb1 \strokec4 \
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  structuralDensity \{n : Nat\} (A : AlgorithmModel n) :\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     A.StateType \uc0\u8594  Real :=\cb1 \
+\cb3   \cf2 \strokec2 fun\cf0 \strokec4  \cf2 \strokec2 _\cf0 \strokec4  => \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u32467 \u26500 \u20316 \u29992 \u37327 \u65306 A[\cf8 \strokec8 \uc0\u968 \cf5 \strokec5 ] = \uc0\u8721  \u955 (s_t) -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 noncomputable\cf0 \cb1 \strokec4 \
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  action \{n : Nat\} \{A : AlgorithmModel n\} \{\uc0\u934  : CNF n\}\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     (\uc0\u968  : ComputationPath A \u934 ) : Real :=\cb1 \
+\cb3   \uc0\u8721  t : Fin (\u968 .T + \cf7 \strokec7 1\cf0 \strokec4 ), structuralDensity A (\uc0\u968 .states t)\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u26102 \u38388 \u27493 \u25968 \u65306 T -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  time \{n : Nat\} \{A : AlgorithmModel n\} \{\uc0\u934  : CNF n\}\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     (\uc0\u968  : ComputationPath A \u934 ) : Nat :=\cb1 \
+\cb3   \uc0\u968 .T\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 6. \uc0\u33021 \u37327 \u23376 \u27700 \u24179 \u38598  & \u33021 \u37327 \u38556 \u30861 \u65288 \u21344 \u20301 \u65289  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u33021 \u37327  \u8804  k \u30340 \u23376 \u27700 \u24179 \u38598  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  sublevel \{n : Nat\} (\uc0\u934  : CNF n) (k : Nat) : Set (Assignment n) :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{ \uc0\u963  | energy \u934  \u963  \u8804  k \}\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u33021 \u37327 \u38556 \u30861 \u65288 \u21344 \u20301 \u29256 \u26412 \u65289 \u65306 \u30495 \u27491 \u29256 \u26412 \u20250 \u29992 \u36335 \u24452  infimum \u23450 \u20041  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  energyBarrier \{n : Nat\} (_\uc0\u934  : CNF n)\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     (_S\uc0\u8320  : Set (Assignment n)) : Nat :=\cb1 \
+\cb3   \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 7. \uc0\u32467 \u26500 \u20316 \u29992 \u37327 \u19982 \u26102 \u38388 \u30340  schema \u23450 \u29702 \u65288 axiom \u21344 \u20301 \u65289  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- \uc0\u20551 \u35774 \u65306 \u23384 \u22312 \u22810 \u39033 \u24335 \u30028  P\u65292 \u20351 \u24471  A[\cf8 \strokec8 \uc0\u968 \cf5 \strokec5 ] \uc0\u8804  P(n) * time(\u968 ) -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 axiom\cf0 \strokec4  action_bounds_time\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{n : Nat\} (A : AlgorithmModel n) :\cb1 \
+\cb3   \uc0\u8707  (P : Nat \u8594  Nat),\cb1 \
+\cb3     \uc0\u8704  (\u934  : CNF n) (\u968  : ComputationPath A \u934 ),\cb1 \
+\cb3       action \uc0\u968  \u8804  (P n : Real) * (time \u968 )\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u20551 \u35774 \u65306 \u23545 \u26576 \u20123 \u20844 \u24335 \u26063 \u65292 \u25152 \u26377  \u968  \u37117 \u26377 \u25351 \u25968 \u32423 \u32467 \u26500 \u20316 \u29992 \u37327 \u19979 \u30028  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 axiom\cf0 \strokec4  exponential_action_lower_bound\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{n : Nat\} (A : AlgorithmModel n) (\uc0\u934  : CNF n) :\cb1 \
+\cb3   \uc0\u8707  (\u947  : Real), \u947  > \cf7 \strokec7 0\cf0 \strokec4  \uc0\u8743 \cb1 \
+\cb3     \uc0\u8704  (\u968  : ComputationPath A \u934 ),\cb1 \
+\cb3       action \uc0\u968  \u8805  Real.exp (\u947  * (n : Real))\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u31034 \u24847 \u24615 \u30340 \u32467 \u35770 \u21344 \u20301 \u65306 \u30495 \u27491 \u29256 \u26412 \u21487 \u20197 \u25913 \u25104 \u26102 \u38388 \u19979 \u30028 \u19981 \u31561 \u24335  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 theorem\cf0 \strokec4  exponential_time_lower_bound_schematic\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{n : Nat\} (_A : AlgorithmModel n) (_\uc0\u934  : CNF n) :\cb1 \
+\cb3   True := \cf2 \strokec2 by\cf0 \cb1 \strokec4 \
+\cb3   \cf2 \strokec2 trivial\cf0 \cb1 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 8. DPLL \uc0\u29366 \u24577 \u19982 \u27169 \u22411  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u29366 \u24577 \u39592 \u26550  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 structure\cf0 \strokec4  DPLLState (n : Nat) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   assign    : Assignment n\cb1 \
+\cb3   undecided : Finset (Fin n)\cb1 \
+\cb3   decisions : List (Fin n \'d7 Bool)\cb1 \
+\cb3   formula   : CNF n\cb1 \
+\cb3   conflict  : Bool\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u29366 \u24577 \u30340 \u33021 \u37327  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLState.energy \{n : Nat\} (s : DPLLState n) : Nat :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   energy s.formula s.assign\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u24403 \u21069 \u36171 \u20540 \u28385 \u36275 \u20844 \u24335 \u65311  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLState.isSatisfied \{n : Nat\} (s : DPLLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   cnfEval s.assign s.formula = \cf2 \strokec2 true\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u24403 \u21069 \u36171 \u20540 \u20135 \u29983 \u35821 \u20041 \u20914 \u31361 \u65311  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLState.hasConflict \{n : Nat\} (s : DPLLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   cnfEval s.assign s.formula = \cf2 \strokec2 false\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u25152 \u26377 \u21464 \u37327 \u37117 \u24050 \u20915 \u23450 \u65311  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLState.isComplete \{n : Nat\} (s : DPLLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s.undecided = \uc0\u8709 \cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u32456 \u27490 \u29366 \u24577 \u65306 \u35201 \u20040  SAT\u65292 \u35201 \u20040  complete+conflict -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLState.isTerminal \{n : Nat\} (s : DPLLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s.isSatisfied \uc0\u8744  (s.hasConflict \u8743  s.isComplete)\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u21021 \u22987 \u29366 \u24577 \u65306 \u25152 \u26377 \u21464 \u37327 \u26410 \u20915 \u23450 \u65292 \u36171 \u20540 \u20840  false -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLL.initState \{n : Nat\} (\uc0\u934  : CNF n) : DPLLState n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{ assign    := \cf2 \strokec2 fun\cf0 \strokec4  \cf2 \strokec2 _\cf0 \strokec4  => \cf2 \strokec2 false\cf0 \cb1 \strokec4 \
+\cb3   , undecided := Finset.univ\cb1 \
+\cb3   , decisions := []\cb1 \
+\cb3   , formula   := \uc0\u934 \cb1 \
+\cb3   , conflict  := \cf2 \strokec2 false\cf0 \strokec4  \}\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u21333 \u27493 \u36716 \u31227 \u65288 \u21344 \u20301 \u23454 \u29616 \u65289  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLL.step \{n : Nat\} (_\uc0\u934  : CNF n) (s : DPLLState n) : DPLLState n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL \uc0\u20572 \u26426 \u26465 \u20214  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLL.halting \{n : Nat\} (_\uc0\u934  : CNF n) (s : DPLLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   DPLLState.isTerminal s\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u25226  DPLL \u21253 \u35013 \u25104  AlgorithmModel -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  DPLLModel (n : Nat) : AlgorithmModel n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3 \{ StateType := DPLLState n\cb1 \
+\cb3 , init     := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  => DPLL.initState \u934 \cb1 \
+\cb3 , step     := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  s => DPLL.step \u934  s\cb1 \
+\cb3 , halting  := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  s => DPLL.halting \u934  s \}\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 9. CDCL \uc0\u29366 \u24577 \u19982 \u27169 \u22411  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u29366 \u24577 \u39592 \u26550  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 structure\cf0 \strokec4  CDCLState (n : Nat) \cf2 \strokec2 where\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   assign      : Assignment n\cb1 \
+\cb3   trail       : List (Fin n \'d7 Bool)\cb1 \
+\cb3   decisionLvl : Nat\cb1 \
+\cb3   formula     : CNF n\cb1 \
+\cb3   learnt      : List (Clause n)\cb1 \
+\cb3   conflicts   : Nat\cb1 \
+\cb3   unsat       : Bool\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u29366 \u24577 \u33021 \u37327  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.energy \{n : Nat\} (s : CDCLState n) : Nat :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   energy s.formula s.assign\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u24403 \u21069 \u36171 \u20540 \u28385 \u36275 \u21407 \u20844 \u24335 \u65311  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.isSatisfied \{n : Nat\} (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   cnfEval s.assign s.formula = \cf2 \strokec2 true\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u24403 \u21069 \u36171 \u20540 \u35821 \u20041 \u20914 \u31361 \u65311  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.hasConflict \{n : Nat\} (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   cnfEval s.assign s.formula = \cf2 \strokec2 false\cf0 \cb1 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- SAT \uc0\u20572 \u26426 \u65306 \u28385 \u36275 \u19988 \u26410 \u26631 \u35760  unsat -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.isSatTerminal \{n : Nat\} (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s.isSatisfied \uc0\u8743  \'ac s.unsat\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- UNSAT \uc0\u20572 \u26426 \u65306 \u20840 \u23616  unsat \u26631 \u24535 \u20026 \u30495  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.isUnsatTerminal \{n : Nat\} (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s.unsat\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u20572 \u26426 \u26465 \u20214 \u65306 SAT \u25110  UNSAT -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLState.isTerminal \{n : Nat\} (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s.isSatTerminal \uc0\u8744  s.isUnsatTerminal\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u21021 \u22987 \u29366 \u24577 \u39592 \u26550  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCL.initState \{n : Nat\} (\uc0\u934  : CNF n) : CDCLState n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   \{ assign      := \cf2 \strokec2 fun\cf0 \strokec4  \cf2 \strokec2 _\cf0 \strokec4  => \cf2 \strokec2 false\cf0 \cb1 \strokec4 \
+\cb3   , trail       := []\cb1 \
+\cb3   , decisionLvl := \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\cb3   , formula     := \uc0\u934 \cb1 \
+\cb3   , learnt      := []\cb1 \
+\cb3   , conflicts   := \cf7 \strokec7 0\cf0 \cb1 \strokec4 \
+\cb3   , unsat       := \cf2 \strokec2 false\cf0 \strokec4  \}\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u21333 \u27493 \u36716 \u31227 \u65288 \u21344 \u20301 \u23454 \u29616 \u65289  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCL.step \{n : Nat\} (_\uc0\u934  : CNF n) (s : CDCLState n) : CDCLState n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   s\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- CDCL \uc0\u20572 \u26426 \u26465 \u20214  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCL.halting \{n : Nat\} (_\uc0\u934  : CNF n) (s : CDCLState n) : \cf2 \strokec2 Prop\cf0 \strokec4  :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3   CDCLState.isTerminal s\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- \uc0\u25226  CDCL \u21253 \u35013 \u25104  AlgorithmModel -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  CDCLModel (n : Nat) : AlgorithmModel n :=\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3 \{ StateType := CDCLState n\cb1 \
+\cb3 , init     := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  => CDCL.initState \u934 \cb1 \
+\cb3 , step     := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  s => CDCL.step \u934  s\cb1 \
+\cb3 , halting  := \cf2 \strokec2 fun\cf0 \strokec4  \uc0\u934  s => CDCL.halting \u934  s \}\cb1 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-!
+\f1\b \cf6 \strokec6  ### 10. \uc0\u32473  DPLL / CDCL \u19968 \u20010 \'93\u33021 \u37327 \u22411 \'94\u32467 \u26500 \u23494 \u24230 \u31034 \u20363  
+\f0\b0 \cf5 \strokec5 -/\cf0 \cb1 \strokec4 \
+\
+\cf5 \cb3 \strokec5 /-- CDCL\uc0\u65306 \u32467 \u26500 \u23494 \u24230  = \u33021 \u37327 \u65288 \u31034 \u20363 \u29256 \u65289  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 noncomputable\cf0 \cb1 \strokec4 \
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  cdclStructuralDensity \{n : Nat\} :\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     (CDCLModel n).StateType \uc0\u8594  Real :=\cb1 \
+\cb3   \cf2 \strokec2 fun\cf0 \strokec4  s => (CDCLState.energy s : Real)\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \cb3 \strokec5 /-- DPLL\uc0\u65306 \u32467 \u26500 \u23494 \u24230  = \u33021 \u37327 \u65288 \u31034 \u20363 \u29256 \u65289  -/\cf0 \cb1 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 noncomputable\cf0 \cb1 \strokec4 \
+\cf2 \cb3 \strokec2 def\cf0 \strokec4  dpllStructuralDensity \{n : Nat\} :\cb1 \
+\pard\pardeftab720\partightenfactor0
+\cf0 \cb3     (DPLLModel n).StateType \uc0\u8594  Real :=\cb1 \
+\cb3   \cf2 \strokec2 fun\cf0 \strokec4  s => (DPLLState.energy s : Real)\cb1 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \cb3 \strokec2 end\cf0 \strokec4  StructuralAction\cb1 \
+\
+}
